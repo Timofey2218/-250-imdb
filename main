@@ -1,0 +1,26 @@
+import requests
+from bs4 import BeautifulSoup
+
+url = 'https://www.imdb.com/chart/top/'
+response = requests.get(url)
+
+soup = BeautifulSoup(response.text, 'html.parser')
+
+movies = soup.find_all('td', class_='titleColumn')
+ratings = soup.find_all('td', class_='ratingColumn imdbRating')
+
+top_movies = {}
+
+for movie, rating in zip(movies, ratings):
+    try:
+        movie_name = movie.a.text if movie.a else 'N/A'
+        movie_rating = rating.strong.text if rating.strong else 'N/A'
+        top_movies[movie_name] = movie_rating
+    except Exception as e:
+        print(f'Error processing movie: {e}')
+
+with open('top_250_movies_imdb.txt', 'w') as file:
+    for movie, rating in top_movies.items():
+        file.write(f'{movie}: {rating}\n')
+
+print('Список лучших 250 фильмов успешно записан в файл top_250_movies_imdb.txt')
