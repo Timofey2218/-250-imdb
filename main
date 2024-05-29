@@ -1,26 +1,55 @@
+import bs4
 import requests
-from bs4 import BeautifulSoup
 
-url = 'https://www.imdb.com/chart/top/'
-response = requests.get(url)
+def find_pages(url):
+    response = open_url(url)
+    soup = bs4.BeautifulSoup(response.text, 'html.parser')
+    pages = soup.find('span', class_='next').previous_sibling.previous_sibling.text
+    return int(pages)
 
-soup = BeautifulSoup(response.text, 'html.parser')
+def open_url(url):
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36 Edge/15.15063'}
+    response = requests.get(url, headers=headers)
+    return response
 
-movies = soup.find_all('td', class_='titleColumn')
-ratings = soup.find_all('td', class_='ratingColumn imdbRating')
+def find_things(url):
+    response = open_url(url)
+    soup = bs4.BeautifulSoup(response.text, 'html.parser')
 
-top_movies = {}
+    film_name = []
+    name = soup.find_all('div', class_='hd')
+    for each in name:
+        film_name.append(each.a.span.text)
 
-for movie, rating in zip(movies, ratings):
-    try:
-        movie_name = movie.a.text if movie.a else 'N/A'
-        movie_rating = rating.strong.text if rating.strong else 'N/A'
-        top_movies[movie_name] = movie_rating
-    except Exception as e:
-        print(f'Error processing movie: {e}')
+    film_score = []
+    score = soup.find_all('span', class_='rating_num')
+    for each in score:
+        film_score.append('Рейтинг: %s' % each.text)
+    film_quote = []
+    quote = soup.find_all('div', class_='star')
+    for each in quote:
+        if each.next_sibling.next_sibling is not None:
+            film_quote.append(each.next_sibling.next_sibling.text)
+        else:
+            film_quote.append("нет")
 
-with open('top_250_movies_imdb.txt', 'w') as file:
-    for movie, rating in top_movies.items():
-        file.write(f'{movie}: {rating}\n')
+    collect = []
+    for i in range(len(film_name)):
+        collect.append(film_name[i] + '  ' + film_score[i] + '  ' + film_quote[i] + "\n")
+    return collect
 
-print('Список лучших 250 фильмов успешно записан в файл top_250_movies_imdb.txt')
+def main():
+    host = 'https://movie.douban.com/top250'
+    pages = find_pages(host)
+
+    crawl_result = []
+    for i in range(pages):
+        url = host + "/?start=" + str(25 * i)
+        result = find_things(url)
+        crawl_result.extend(result)
+    with open('Результаты парсинга ТОП-250 фильмов Douban.txt', 'w', encoding='utf-8') as f:
+        for each in crawl_result:
+            f.writelines(each)
+
+if __name__ == "__main__":
+    main()
